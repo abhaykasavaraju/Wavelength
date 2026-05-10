@@ -165,6 +165,20 @@ function buildGenreLabel() {
     .join(', ');
 }
 
+function syncGenButton() {
+  const btn = document.getElementById('btn-generate');
+  if (!btn) return;
+  const canGenerate = state.selectedMood || state.selectedGenres.length > 0;
+  const mood = MOODS.find(m => m.id === state.selectedMood);
+  btn.className = `btn-generate${canGenerate ? ' ready' : ''}`;
+  btn.textContent = mood
+    ? `Generate ${mood.name} playlist`
+    : state.selectedGenres.length > 0
+      ? 'Generate playlist'
+      : 'Select a mood or genre';
+  btn.onclick = canGenerate ? generatePlaylist : null;
+}
+
 function renderLogin() {
   document.getElementById('app').innerHTML = `
     <div class="login-screen">
@@ -232,7 +246,7 @@ function renderApp() {
       <div class="lang-section">
         <details class="lang-dropdown" id="genre-dropdown">
           <summary class="lang-trigger">
-            <span class="lang-trigger-text${genreLabel ? '' : ' placeholder'}">${genreLabel || 'Mood-based (auto)'}</span>
+            <span class="lang-trigger-text${genreLabel ? '' : ' placeholder'}">${genreLabel || 'Select genres'}</span>
             <svg class="lang-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
           <div class="lang-panel">
@@ -308,9 +322,10 @@ function renderApp() {
       const triggerText = document.querySelector('#genre-dropdown .lang-trigger-text');
       if (triggerText) {
         const lbl = buildGenreLabel();
-        triggerText.textContent = lbl || 'Mood-based (auto)';
+        triggerText.textContent = lbl || 'Select genres';
         triggerText.classList.toggle('placeholder', !lbl);
       }
+      syncGenButton();
     });
   });
 
