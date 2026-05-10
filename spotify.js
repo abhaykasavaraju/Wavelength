@@ -41,28 +41,61 @@ const LANGUAGE_KEYWORDS = {
   italian:    'italian',
 };
 
+// Market codes narrow results to tracks available (and popular) in that region
+const LANGUAGE_MARKETS = {
+  hindi:      'IN',
+  tamil:      'IN',
+  telugu:     'IN',
+  kannada:    'IN',
+  malayalam:  'IN',
+  bengali:    'IN',
+  punjabi:    'IN',
+  marathi:    'IN',
+  english:    'US',
+  spanish:    'ES',
+  korean:     'KR',
+  japanese:   'JP',
+  french:     'FR',
+  portuguese: 'BR',
+  arabic:     'SA',
+  italian:    'IT',
+};
+
 export async function getRecommendations(_mood, seedGenres, languages = []) {
   // /v1/recommendations was deprecated Nov 2024; use search with genre + language combinations
-  const langTerms = languages.length > 0
-    ? languages.map(l => LANGUAGE_KEYWORDS[l]).filter(Boolean)
-    : [''];
+  const langEntries = languages.length > 0
+    ? languages
+        .map(l => ({ term: LANGUAGE_KEYWORDS[l], market: LANGUAGE_MARKETS[l] }))
+        .filter(e => e.term)
+    : [{ term: '', market: null }];
 
   const queries = [];
   for (const genre of seedGenres) {
-    for (const lang of langTerms) {
-      queries.push(lang ? `${genre} ${lang}` : genre);
+    for (const { term, market } of langEntries) {
+      // Language term first so Spotify weights it higher than genre
+      queries.push({ q: term ? `${term} ${genre}` : genre, market });
     }
   }
 
   const results = await Promise.allSettled(
-    queries.map(q => {
-      const query = new URLSearchParams({ q, type: 'track', limit: 5 });
+    queries.map(({ q, market }) => {
+      const params = { q, type: 'track', limit: '10' };
+      if (market) params.market = market;
+      const query = new URLSearchParams(params);
       return apiFetch(`https://api.spotify.com/v1/search?${query}`);
     })
   );
+
+  const seen = new Set();
   const tracks = results
     .filter(r => r.status === 'fulfilled')
-    .flatMap(r => r.value.tracks.items);
+    .flatMap(r => r.value.tracks.items)
+    .filter(t => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+
   if (tracks.length === 0) throw new Error('No tracks found. Try a different mood or language.');
   return { tracks: tracks.sort(() => Math.random() - 0.5) };
 }
