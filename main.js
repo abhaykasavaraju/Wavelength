@@ -51,10 +51,80 @@ const LANGUAGE_GROUPS = [
 // Flat list for lookups
 const LANGUAGES = LANGUAGE_GROUPS.flatMap(g => g.languages);
 
+const GENRE_GROUPS = [
+  {
+    label: 'Indian',
+    genres: [
+      { id: 'bollywood',   label: 'Bollywood' },
+      { id: 'bhangra',     label: 'Bhangra' },
+      { id: 'sufi',        label: 'Sufi' },
+      { id: 'desi pop',    label: 'Desi Pop' },
+      { id: 'carnatic',    label: 'Carnatic' },
+      { id: 'devotional',  label: 'Devotional' },
+    ],
+  },
+  {
+    label: 'Pop & Dance',
+    genres: [
+      { id: 'pop',         label: 'Pop' },
+      { id: 'dance',       label: 'Dance' },
+      { id: 'indie pop',   label: 'Indie Pop' },
+      { id: 'kpop',        label: 'K-Pop' },
+      { id: 'jpop',        label: 'J-Pop' },
+      { id: 'latin pop',   label: 'Latin Pop' },
+    ],
+  },
+  {
+    label: 'Hip Hop & R&B',
+    genres: [
+      { id: 'hip hop',     label: 'Hip Hop' },
+      { id: 'rnb',         label: 'R&B' },
+      { id: 'trap',        label: 'Trap' },
+      { id: 'soul',        label: 'Soul' },
+      { id: 'afrobeats',   label: 'Afrobeats' },
+      { id: 'reggaeton',   label: 'Reggaeton' },
+    ],
+  },
+  {
+    label: 'Rock & Alternative',
+    genres: [
+      { id: 'rock',        label: 'Rock' },
+      { id: 'indie',       label: 'Indie' },
+      { id: 'alternative', label: 'Alternative' },
+      { id: 'metal',       label: 'Metal' },
+      { id: 'punk',        label: 'Punk' },
+    ],
+  },
+  {
+    label: 'Electronic',
+    genres: [
+      { id: 'electronic',  label: 'Electronic' },
+      { id: 'edm',         label: 'EDM' },
+      { id: 'house',       label: 'House' },
+      { id: 'lofi',        label: 'Lo-Fi' },
+      { id: 'ambient',     label: 'Ambient' },
+    ],
+  },
+  {
+    label: 'Acoustic & More',
+    genres: [
+      { id: 'acoustic',    label: 'Acoustic' },
+      { id: 'jazz',        label: 'Jazz' },
+      { id: 'classical',   label: 'Classical' },
+      { id: 'folk',        label: 'Folk' },
+      { id: 'country',     label: 'Country' },
+      { id: 'blues',       label: 'Blues' },
+    ],
+  },
+];
+
+const GENRES = GENRE_GROUPS.flatMap(g => g.genres);
+
 let state = {
   user: null,
   selectedMood: null,
   selectedLanguages: [],
+  selectedGenres: [],
   playlistName: '',
   tracks: [],
   currentAudio: null,
@@ -88,6 +158,13 @@ function buildLangLabel() {
     .join(', ');
 }
 
+function buildGenreLabel() {
+  if (state.selectedGenres.length === 0) return null;
+  return state.selectedGenres
+    .map(id => GENRES.find(g => g.id === id).label)
+    .join(', ');
+}
+
 function renderLogin() {
   document.getElementById('app').innerHTML = `
     <div class="login-screen">
@@ -104,6 +181,7 @@ function renderLogin() {
 
 function renderApp() {
   const label = buildLangLabel();
+  const genreLabel = buildGenreLabel();
 
   document.getElementById('app').innerHTML = `
     <div class="app-layout">
@@ -143,6 +221,27 @@ function renderApp() {
                 <label class="lang-option">
                   <input type="checkbox" class="lang-checkbox" value="${l.id}" ${state.selectedLanguages.includes(l.id) ? 'checked' : ''}>
                   <span>${l.flag} ${l.label}</span>
+                </label>
+              `).join('')}
+            `).join('')}
+          </div>
+        </details>
+      </div>
+
+      <p class="section-label">Genres</p>
+      <div class="lang-section">
+        <details class="lang-dropdown" id="genre-dropdown">
+          <summary class="lang-trigger">
+            <span class="lang-trigger-text${genreLabel ? '' : ' placeholder'}">${genreLabel || 'Mood-based (auto)'}</span>
+            <svg class="lang-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <div class="lang-panel">
+            ${GENRE_GROUPS.map(group => `
+              <div class="lang-group-label">${group.label}</div>
+              ${group.genres.map(g => `
+                <label class="lang-option">
+                  <input type="checkbox" class="genre-checkbox" value="${g.id}" ${state.selectedGenres.includes(g.id) ? 'checked' : ''}>
+                  <span>${g.label}</span>
                 </label>
               `).join('')}
             `).join('')}
@@ -195,12 +294,30 @@ function renderApp() {
     genBtn.addEventListener('click', generatePlaylist);
   }
 
-  // Close dropdown when clicking outside
-  const dropdown = document.getElementById('lang-dropdown');
-  document.addEventListener('click', function closeDropdown(e) {
-    if (dropdown && !dropdown.contains(e.target)) {
-      dropdown.removeAttribute('open');
-    }
+  document.querySelectorAll('.genre-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) {
+        if (!state.selectedGenres.includes(cb.value)) {
+          state.selectedGenres = [...state.selectedGenres, cb.value];
+        }
+      } else {
+        state.selectedGenres = state.selectedGenres.filter(g => g !== cb.value);
+      }
+      const triggerText = document.querySelector('#genre-dropdown .lang-trigger-text');
+      if (triggerText) {
+        const lbl = buildGenreLabel();
+        triggerText.textContent = lbl || 'Mood-based (auto)';
+        triggerText.classList.toggle('placeholder', !lbl);
+      }
+    });
+  });
+
+  // Close both dropdowns when clicking outside
+  const langDropdown = document.getElementById('lang-dropdown');
+  const genreDropdown = document.getElementById('genre-dropdown');
+  document.addEventListener('click', function closeDropdowns(e) {
+    if (langDropdown && !langDropdown.contains(e.target)) langDropdown.removeAttribute('open');
+    if (genreDropdown && !genreDropdown.contains(e.target)) genreDropdown.removeAttribute('open');
   });
 
   if (state.tracks.length > 0) {
@@ -283,7 +400,9 @@ async function generatePlaylist() {
   state.playlistName = '';
 
   try {
-    const genres = getMoodGenres(state.selectedMood);
+    const genres = state.selectedGenres.length > 0
+      ? state.selectedGenres
+      : getMoodGenres(state.selectedMood);
     const data = await getRecommendations(state.selectedMood, genres, state.selectedLanguages);
     state.tracks = data.tracks;
     const mood = MOODS.find(m => m.id === state.selectedMood);
