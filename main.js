@@ -249,10 +249,12 @@ function renderApp() {
         </details>
       </div>
 
-      <button class="btn-generate ${state.selectedMood ? 'ready' : ''}" id="btn-generate">
+      <button class="btn-generate ${state.selectedMood || state.selectedGenres.length > 0 ? 'ready' : ''}" id="btn-generate">
         ${state.selectedMood
           ? `Generate ${MOODS.find(m => m.id === state.selectedMood).name} playlist`
-          : 'Select a mood first'}
+          : state.selectedGenres.length > 0
+            ? 'Generate playlist'
+            : 'Select a mood or genre'}
       </button>
 
       <div id="tracks-container"></div>
@@ -263,7 +265,7 @@ function renderApp() {
 
   document.querySelectorAll('.mood-card').forEach(card => {
     card.addEventListener('click', () => {
-      state.selectedMood = card.dataset.mood;
+      state.selectedMood = state.selectedMood === card.dataset.mood ? null : card.dataset.mood;
       state.tracks = [];
       state.playlistName = '';
       stopAudio();
@@ -290,7 +292,7 @@ function renderApp() {
   });
 
   const genBtn = document.getElementById('btn-generate');
-  if (state.selectedMood) {
+  if (state.selectedMood || state.selectedGenres.length > 0) {
     genBtn.addEventListener('click', generatePlaylist);
   }
 
@@ -328,12 +330,12 @@ function renderApp() {
 function renderTracks() {
   const container = document.getElementById('tracks-container');
   const mood = MOODS.find(m => m.id === state.selectedMood);
-  const defaultName = `Wavelength — ${mood.name} Vibes`;
+  const defaultName = state.playlistName || (mood ? `Wavelength — ${mood.name} Vibes` : 'Wavelength — My Playlist');
 
   container.innerHTML = `
     <div class="tracks-section">
       <div class="tracks-header">
-        <p class="section-label">${mood.name} playlist</p>
+        <p class="section-label">${mood ? mood.name + ' playlist' : 'Your playlist'}</p>
         <span class="track-count">${state.tracks.length} tracks</span>
       </div>
       <div class="track-list">
@@ -406,7 +408,7 @@ async function generatePlaylist() {
     const data = await getRecommendations(state.selectedMood, genres, state.selectedLanguages);
     state.tracks = data.tracks;
     const mood = MOODS.find(m => m.id === state.selectedMood);
-    state.playlistName = `Wavelength — ${mood.name} Vibes`;
+    state.playlistName = mood ? `Wavelength — ${mood.name} Vibes` : 'Wavelength — My Playlist';
     renderApp();
     renderTracks();
     document.getElementById('tracks-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
